@@ -31,11 +31,15 @@ import static java.lang.Math.toRadians;
 
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.Objects;
+import java.util.PriorityQueue;
+import java.util.TreeSet;
 
 import org.apache.commons.lang.Validate;
 
-public class GeoGeometry {
+import com.google.common.primitives.Doubles;
 
+public class GeoGeometry {
 
     /**
      * @param point
@@ -1141,4 +1145,90 @@ public class GeoGeometry {
             }
         }
     }
+    private static abstract class Event {
+        double[] p;
+        boolean left;
+    }
+
+    private static class EndPoint extends Event {
+        private final double[] other;
+
+        public EndPoint(double[] p, boolean left, double[] other) {
+            this.p = p;
+            this.left = left;
+            this.other = other;
+        }
+
+        public static EndPoint point(double[] p, boolean left, double[] other) {
+            return new EndPoint(p,left,other);
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return Objects.deepEquals(p, ((EndPoint)obj).p) && Objects.deepEquals(other, ((EndPoint)obj).other);
+        }
+
+        @Override
+        public int hashCode() {
+            return Doubles.hashCode(p[0]) * Doubles.hashCode(p[1]) * 42;
+        }
+    }
+
+    public void findSelfIntersections(double[][] points) {
+        // sorted by x
+        PriorityQueue<Event> pq = new PriorityQueue<Event>(points.length, new Comparator<Event>(){
+
+            @Override
+            public int compare(Event p1, Event p2) {
+                double x1 = p1.p[0];
+                double x2 = p2.p[0];
+                if (x1 < x2) {
+                    return -1;
+                } else if (p1.p[0] == p2.p[0]) {
+                    return 0;
+                } else {
+                    return 1;
+                }
+            }});
+
+        for(int i=1;i<points.length;i++) {
+            double[] start = points[i-1];
+            double[] end = points[i];
+            if(start[0]<=end[0]) {
+                pq.add(EndPoint.point(start, true, end));
+                pq.add(EndPoint.point(end, false, start));
+            } else {
+                pq.add(EndPoint.point(start, false, end));
+                pq.add(EndPoint.point(end, true, start));
+            }
+        }
+
+        TreeSet<Event> ts = new TreeSet<Event>(new Comparator<Event>(){
+            @Override
+            public int compare(Event p1, Event p2) {
+                double y1 = p1.p[1];
+                double y2 = p2.p[1];
+                if (y1 < y2) {
+                    return -1;
+                } else if (p1.p[0] == p2.p[0]) {
+                    return 0;
+                } else {
+                    return 1;
+                }
+            }
+        });
+
+        while(!pq.isEmpty()) {
+            Event p = pq.poll();
+            if(p.left) {
+                ts.add(p);
+                Event below = ts.floor(p);
+                Event above = ts.ceiling(p);
+            } else {
+
+            }
+
+        }
+    }
+
 }
